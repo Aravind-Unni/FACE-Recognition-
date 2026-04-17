@@ -18,7 +18,7 @@ Once installed, open your PowerShell terminal in your project folder (`C:\Face_I
 py -3.11 -m venv venv
 ```
 
-###Step 3: Activate the Environment
+### Step 3: Activate the Environment
 Turn on the newly created virtual environment:
 
 ```powershell
