@@ -69,9 +69,20 @@ async def websocket_authenticate(websocket: WebSocket):
             # Convert BGR (OpenCV) to RGB (face_recognition)
             rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             
-            # Detect face locations and extract encodings
-            face_locations = face_recognition.face_locations(rgb_img)
+            # --- PERFORMANCE UPGRADE: Shrink frame to 1/4 size for faster detection ---
+            small_frame = cv2.resize(rgb_img, (0, 0), fx=0.25, fy=0.25)
+            
+            # Detect face locations on the tiny image
+            raw_face_locations = face_recognition.face_locations(small_frame)
+            
+            # Scale the bounding boxes back up by 4 to match the original image size
+            face_locations = []
+            for (top, right, bottom, left) in raw_face_locations:
+                face_locations.append((top * 4, right * 4, bottom * 4, left * 4))
+                
+            # Extract encodings from the HIGH-RES image using the scaled-up coordinates
             face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
+            # -------------------------------------------------------------------------
             
             results = []
             if index.ntotal > 0:

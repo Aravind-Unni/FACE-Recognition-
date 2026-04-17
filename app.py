@@ -4,6 +4,7 @@ import requests
 import asyncio
 import websockets
 import json
+import time
 
 API_URL = "http://127.0.0.1:8000"
 WS_URL = "ws://127.0.0.1:8000/ws/authenticate"
@@ -22,6 +23,11 @@ with tab1:
     async def run_live_scanner():
         cap = cv2.VideoCapture(0) # Open default webcam
         
+        # State variables for the debounce/cooldown logic
+        cooldown_until = 0
+        banner_text = ""
+        banner_color = (0, 0, 0)
+        
         async with websockets.connect(WS_URL) as websocket:
             while run_auth:
                 ret, frame = cap.read()
@@ -29,25 +35,49 @@ with tab1:
                     st.error("Failed to capture video.")
                     break
                 
-                # Compress frame to send over websocket
-                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
-                await websocket.send(buffer.tobytes())
+                current_time = time.time()
                 
-                # Receive bounding boxes and names
-                response = await websocket.recv()
-                data = json.loads(response)
-                
-                # Draw boxes on the frame
-                for face in data.get("faces", []):
-                    box = face["box"]
-                    name = face["name"]
+                # Check if we are currently in a cooldown period
+                if current_time < cooldown_until:
+                    # Draw dynamic Banner (Green for Granted, Red for Denied)
+                    cv2.rectangle(frame, (0, frame.shape[0] - 80), (frame.shape[1], frame.shape[0]), banner_color, -1)
+                    cv2.putText(frame, banner_text, (30, frame.shape[0] - 25), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 3)
+                else:
+                    # Not in cooldown. Compress and send frame to AI backend for scanning.
+                    _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
+                    await websocket.send(buffer.tobytes())
                     
-                    # Color logic (Green for match, Red for Unknown)
-                    color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
+                    # Receive bounding boxes and names
+                    response = await websocket.recv()
+                    data = json.loads(response)
                     
-                    cv2.rectangle(frame, (box["left"], box["top"]), (box["right"], box["bottom"]), color, 2)
-                    cv2.putText(frame, name, (box["left"], box["top"] - 10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+                    # Draw boxes on the frame
+                    for face in data.get("faces", []):
+                        box = face["box"]
+                        name = face["name"]
+                        
+                        # Color logic for the bounding box
+                        color = (0, 255, 0) if name != "Unknown" else (0, 0, 255)
+                        
+                        cv2.rectangle(frame, (box["left"], box["top"]), (box["right"], box["bottom"]), color, 2)
+                        cv2.putText(frame, name, (box["left"], box["top"] - 10), 
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+                        
+                        # --- ASYMMETRIC COOLDOWN LOGIC ---
+                        if name != "Unknown":
+                            # Known user: 3-second pause to walk through the door
+                            cooldown_until = current_time + 3.0 
+                            banner_text = f"ACCESS GRANTED: {name.upper()}"
+                            banner_color = (0, 255, 0) 
+                        else:
+                            # Unknown user: 1-second pause to flash warning, then try again quickly
+                            cooldown_until = current_time + 1.0 
+                            banner_text = "ACCESS DENIED: UNKNOWN"
+                            banner_color = (0, 0, 255) 
+                            
+                        # Break out of the loop so it only triggers the door logic for the primary detected face
+                        break 
 
                 # Convert BGR to RGB for Streamlit rendering
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
