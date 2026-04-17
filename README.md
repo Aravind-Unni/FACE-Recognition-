@@ -25,14 +25,14 @@ Turn on the newly created virtual environment:
 .\venv\Scripts\activate
 ```
 
-###Step 4: Install the C++ Build Tools
+### Step 4: Install the C++ Build Tools
 1. Go to the official Microsoft download page: Visual Studio Build Tools.
 2. Download and run the Build Tools installer.
 3. When the installer opens, you will see a grid of options. Check the box for "Desktop development with C++".
 4. Look at the "Installation details" panel on the right side. Ensure that the MSVC v143 - VS 2022 C++ x64/x86 build tools and the Windows 11 SDK (or Windows 10 SDK) are checked.
 5. Click Install. (Note: This is a large download, usually around 6-8 GB).
 
-###Step 5: Refresh Your Environment
+### Step 5: Refresh Your Environment
 1. The newly installed compilers will not be recognized by your current terminal session.
 2. Close your PowerShell/VS Code completely.
 3. Reopen your terminal.
@@ -43,21 +43,21 @@ cd C:\Face_ID_recognition
 .\venv\Scripts\activate
 ```
 
-###cd C:\Face_ID_recognition
-.\venv\Scripts\activate
+### Step 6: Install Requirements
+With your virtual environment activated and C++ tools installed, install the project dependencies:
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-###Step 7: Run the Backend (FastAPI)
+### Step 7: Run the Backend (FastAPI)
 Start the FastAPI server:
 
 ```powershell
 py -m uvicorn main:app --reload
 ```
 
-###Step 8: Run the Frontend (Streamlit)
+### Step 8: Run the Frontend (Streamlit)
 Open a new terminal, activate the virtual environment again, and start the Streamlit interface
 
 ```powershell
